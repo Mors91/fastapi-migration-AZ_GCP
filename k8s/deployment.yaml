@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: fastapi-demo
-        image: REPLACE_ME_IMAGE
+        image: us-central1-docker.pkg.dev/fastapi-migration-demo/fastapi-repo/fastapi-demo:latest
         ports:
         - containerPort: 80
 ---
