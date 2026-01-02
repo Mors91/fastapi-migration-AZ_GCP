@@ -1,0 +1,47 @@
+name: Deploy to GCP GKE
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Configure Docker
+      run: |
+        gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+    - name: Build Docker image
+      run: |
+        docker build -t fastapi-demo .
+
+    - name: Tag image
+      run: |
+        docker tag fastapi-demo \
+          ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO }}/fastapi-demo:latest
+
+    - name: Push image
+      run: |
+        docker push \
+          ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO }}/fastapi-demo:latest
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: ${{ secrets.GCP_CLUSTER_NAME }}
+        location: ${{ secrets.GCP_ZONE }}
+
+    - name: Deploy to GKE
+      run: |
+        kubectl set image deployment/fastapi-demo fastapi-demo=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPO }}/fastapi-demo:latest
+        kubectl rollout status deployment/fastapi-demo
